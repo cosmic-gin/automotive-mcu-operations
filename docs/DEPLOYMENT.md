@@ -42,22 +42,62 @@ Use another `POSTGRES_PORT` in `.env` if 5432 is in use. `POSTGRES_HOST`, `POSTG
 Never store credentials in a committed file. `docker compose stop postgres` stops the service
 and retains its data volume.
 
-## GitHub and Streamlit Community Cloud
+## Free portfolio deployment on Streamlit Community Cloud
 
-Follow the [GitHub push guide](GITHUB_PUSH.md) for the full PowerShell sequence.
+### 1. Publish the source to GitHub
 
-1. Review `git status --short` and `git ls-files`. Source, documentation and screenshots
-   belong in Git. Raw or exported data, reports, local databases and `.env` are ignored.
-2. Create a GitHub repository using your account when ready to share. Add the remote with
-   `git remote add origin <repository-url>` and push `git push -u origin main`.
-3. Verify **Actions → Test and lint**. Use **Actions → Weekly fictional operations report →
-   Run workflow** on the default branch and check the report artifact.
-4. Sign in to Streamlit Community Cloud and choose **Create app**. Select your repository,
-   branch `main`, and main file path `app/streamlit_app.py`. Select Python 3.12 in advanced
-   settings. The root `requirements.txt` installs the project, including its SQL resources.
-   [Streamlit app dependencies](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/app-dependencies)
-5. Deploy the app and open the resulting URL. Wait for the initial deterministic snapshot.
-   Check the executive page, change the dates or category, and verify the isolated duplicate
-   check on Data Reliability. Cloud demo startup uses DuckDB and temporary storage.
+Follow the [GitHub push guide](GITHUB_PUSH.md) to review the files, attach your repository and
+push `main`. A public repository gives recruiters access to the source and makes the app public
+by default. If you keep the repository private, authorize private repository access in
+Community Cloud and make the app public separately. [Connect GitHub](https://docs.streamlit.io/deploy/streamlit-community-cloud/get-started/connect-your-github-account) · [App visibility](https://docs.streamlit.io/deploy/streamlit-community-cloud/share-your-app)
+
+The dashboard builds its own reference snapshot. The separate weekly GitHub Actions workflow
+uses the rolling replay and stores its outputs as run artifacts.
+
+### 2. Configure the deployment
+
+Open [Streamlit Community Cloud](https://share.streamlit.io/) and sign in with the GitHub
+account that administers the repository. Choose **Create app**, then **Yup, I have an app**.
+You can also start from **Deploy now** under **Streamlit Community Cloud** in the local app's
+deployment menu.
+
+| Field | Value |
+| --- | --- |
+| Repository | `cosmic-gin/automotive-mcu-operations`, or the repository you pushed |
+| Branch | `main` |
+| Main file path | `app/streamlit_app.py` |
+| App URL | Optional. Try `automotive-mcu-operations` if available |
+| Advanced settings → Python version | `3.12` |
+| Advanced settings → Secrets | Leave blank |
+
+Save the advanced settings and click **Deploy**. The root `requirements.txt` installs the
+project and its packaged SQL. The default backend is DuckDB. The app generates its fictional
+reference data in temporary storage, so it needs only the committed source files.
+[Deployment form](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy) · [App dependencies](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/app-dependencies)
+
+### 3. Verify the recruiter experience
+
+1. Wait for the build and first snapshot. If startup fails, open **Manage app** and inspect
+   the logs, then confirm the branch, main file path and Python version.
+2. Open the assigned `.streamlit.app` URL in a private browser window. If login is required,
+   open **App settings → Sharing** and set the app to public before sharing the URL.
+3. Verify the Executive overview displays **69.2%** on-time delivery and **269,913** open
+   units for the unfiltered reference period. Select a category and check the KPI updates.
+4. Open **Data reliability**. Confirm **67,366** accepted rows and use **Detect a duplicate
+   order** to see a separate test row flagged with `duplicate_key`.
+5. Add the verified URL to your CV. Community Cloud puts idle apps to sleep. A visitor can
+   wake a public app from the sleep screen. A GitHub link gives recruiters a second way to see
+   the project and screenshots. [Hibernation and logs](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app)
+
+## CV project entry
+
+**Automotive MCU Operations Intelligence Platform** · Python, SQL, Streamlit, DuckDB, PostgreSQL
+
+Built an interactive operations dashboard for 67,366 synthetic semiconductor records.
+Implemented delivery and backlog KPIs, inventory reconciliation, and data-quality quarantine.
+Verified the full pipeline on PostgreSQL and DuckDB.
+
+Add a **Live demo** link once the public app opens without sign-in. Add a **GitHub** link if the
+repository is public.
 
 Use the [Tableau guide](TABLEAU_GUIDE.md) for the separate manual workbook workflow.

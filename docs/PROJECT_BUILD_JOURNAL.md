@@ -254,3 +254,15 @@ steps remain external to this local release.
 Interview answer — I can explain how a deterministic replay adds calendar-driven events,
 why stock and dispatch capacity are separate, and how I verified the same outputs across
 DuckDB and a real PostgreSQL container.
+
+## Community Cloud preflight
+
+Tested the files tracked at `7e2ec0d` in a clean Linux Python 3.12 container with a
+700 MiB memory limit and two CPU quota. `uv pip install --system -r requirements.txt`
+installed the package and its SQL assets, and `pip check` passed. The smoke test
+verified all four pages, a category filter and duplicate detection. The app started
+without secrets, a local database or a prebuilt data directory.
+
+Expanded the [deployment guide](DEPLOYMENT.md) with the exact Community Cloud form
+settings, public access checks and a CV project entry. Hosted verification starts
+after the GitHub push and deployment.

@@ -11,19 +11,19 @@
 | 6. Streamlit | Four pages, filters and centered reliability tables verified |
 | 7. Reporting and monitoring | Local cycle and workflow files verified |
 | 8. Tableau exports | Five reconciled CSVs and workbook guide delivered |
-| 9. Deployment preparation | Clean wheel installation and fresh demo boot verified |
+| 9. Deployment preparation | Clean Linux Python 3.12 install and four-page demo boot verified |
 | 10. Integration and interview preparation | Full local suite and documentation verified |
 
 ## Acceptance evidence
 
 | Criterion | Local evidence |
 | --- | --- |
-| Set up from README | Installed a fresh environment using the deployment requirements and started the app |
+| Set up from README | Installed from the tracked files in a clean Linux Python 3.12 container using the root requirements |
 | Reproducible fictional sources | Seeded tables compare equal in the generator tests |
 | Detect intended failures | Fault snapshot flagged stale inventory and rejected 31 rows |
 | Inspect rejected records | Quarantine CSV preserves rules, identifiers and original fields |
 | Store in PostgreSQL | Full Compose load and SQL counts of 29,454 orders, 32,252 shipments and 3,276 stock observations |
-| Run the DuckDB demo | Final wheel booted the app without a prebuilt database |
+| Run the DuckDB demo | Clean Linux boot with no database or secrets passed under a 700 MiB memory limit and two CPU quota |
 | Test SQL KPIs | Hand fixtures and live PostgreSQL parity passed |
 | Display calculated dashboard metrics | AppTest and browser verified the SQL-backed overview and reliability view |
 | Filter by date and product | AppTest compared the filtered card with the SQL result |
