@@ -21,7 +21,8 @@ Python process and stores a portable file, or an in-memory snapshot for hosted d
 The loader atomically replaces project-owned tables in one transaction, using dependency order
 and the same packaged SQL DDL on both engines. Readers see a committed snapshot. Invalid inserts
 roll back the replacement. PostgreSQL additionally serializes concurrent loaders with a
-transaction advisory lock. A DuckDB file is intended for one writer process. Stop the local
+transaction advisory lock. Dashboard, export and report reads use one transaction with a shared
+lock on PostgreSQL, so a reload cannot interleave with their queries. A DuckDB file is intended for one writer process. Stop the local
 DuckDB dashboard before running a separate writer. The snapshot metadata and quality evidence
 are committed with the operational tables. ETL audit files remain available for failed runs.
 

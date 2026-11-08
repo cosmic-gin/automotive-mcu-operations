@@ -79,3 +79,144 @@ Interview answer — I preserve rejected records and reasons so an analyst can d
 process issue from a data issue. Processing valid parent records first keeps the accepted tables
 referentially consistent. Next, the accepted snapshot will be loaded into both databases.
 
+
+## Phase 4 — Analytical storage
+
+[Database layer](../src/mcu_ops/database.py) reads the [shared DDL](../src/mcu_ops/sql/schema/snapshot.sql)
+and writes typed rows, SQL constraints, indexes and snapshot metadata inside one transaction.
+[Database guide](DATABASE.md) explains the full-refresh design and the Compose commands.
+PostgreSQL provides independent server sessions. DuckDB runs inside the demo process.
+
+Ran `python -m mcu_ops.database` against DuckDB. SQL counted 12 products, 15,954 orders,
+2,496 lots, 480 inventory observations and 18,170 shipments. Ten tests passed, including
+repeated load, orphan checks and rollback after a foreign-key violation. The PostgreSQL test
+skipped because there was no active test connection. Compose syntax validated with a temporary
+configuration-only password. Docker startup was requested for runtime verification.
+
+Interview answer — I commit the operational tables and their quality metadata together so
+an unsuccessful reload leaves the last valid snapshot intact. The next phase builds shared
+SQL metrics over these tables.
+
+
+## Phase 5 — SQL analytics and KPI engine
+
+[Analytics](../src/mcu_ops/analytics.py) binds filters and reads packaged SQL. The shared order
+CTE reduces all dispatch events to one row per order before KPI calculations. Monthly demand
+and throughput use separate date dimensions. Rule-based alerts compare measured values with
+fictional targets. [SQL walkthrough](SQL_WALKTHROUGH.md) explains three queries clause by clause.
+
+Ran `python -m pytest -q` (11 passed, two PostgreSQL checks skipped) and Ruff (passed).
+The hand fixture produced 25% OTD, 195 units of backlog, 2 overdue orders and 97.23% weighted
+yield. Queried the full DuckDB snapshot and observed monthly OTD fall from 100% in March
+to 45.99% in June and recover to 78.04% in September. The aggregate rate was 71.42%.
+
+Interview answer — I use left joins to preserve due orders with no dispatch and aggregate
+independent facts before joining them. I test metric semantics with hand-computed cases.
+The next phase uses these exact SQL results in Streamlit.
+
+
+## Phase 6 — Streamlit dashboards
+
+[Streamlit entry point](../app/streamlit_app.py) registers four file-based pages and keeps one
+set of filters in the sidebar. Plotly charts and downloads use the same SQL service as the
+headline metrics. The quality page groups each due order once by observed lot links.
+The reliability page reads committed metadata and runs the duplicate demo on an isolated sample.
+
+Ran `python -m streamlit run app/streamlit_app.py --server.headless true --server.port 8517`.
+The local health endpoint returned `ok`. Browser verification confirmed the executive values
+and the duplicate detection message. Captures are in [screenshots](screenshots).
+`python -m pytest -q` passed 12 tests and skipped two PostgreSQL checks. Ruff passed.
+AppTest initially interpreted an `app/pages` directory as legacy navigation on rerun.
+Moving the explicitly registered views out of that directory preserved the sidebar.
+The test confirmed all four pages, date and category filters against SQL, and duplicate detection.
+
+Interview answer — I can follow an executive delivery alert to missed promises, inspect shipped
+and remaining units, and download the exact rows behind the investigation. Next, reporting
+will use the same business logic on a schedule.
+
+
+## Phase 7 — Automated reporting and monitoring
+
+[Reporting module](../src/mcu_ops/reporting.py) regenerates or ingests sources, validates them,
+reloads the database and compares adjacent seven-day windows. The report and execution
+records have unique run IDs. [Reporting guide](REPORTING.md) explains GitHub scheduling and artifact retention.
+
+Ran `python -m pytest -q tests/test_reporting.py` (1 passed) and `python -m ruff check .`
+(passed after fixing the execution-history import). The first full refresh logged the expected
+DuckDB file lock while Streamlit held the same database. Using `MCU_DATA_DIR=data/scheduled`,
+`python -m mcu_ops.reporting --refresh` exited 0 and wrote a weekly Markdown report,
+a succeeded execution record and quality evidence. The report showed 80.74% vs 76.97% OTD
+and 101,999 vs 94,134 backlog units. Both workflow files parsed as YAML. GitHub-hosted
+execution requires a published repository.
+
+Interview answer — CI tests a change before it is merged. A scheduled workflow runs the same
+Python command with its own DuckDB file and retains reports and failure evidence as artifacts.
+Next, the project will export dashboard-ready data at explicit grains for Tableau.
+
+
+## Phase 8 — Tableau exports
+
+[Tableau exporter](../src/mcu_ops/tableau.py) writes five grain-specific extracts with additive
+numerators and denominators. [Workbook guide](TABLEAU_GUIDE.md) covers typing, calculations,
+layout, filters and manual publication. Streamlit runs Python and SQL live. Tableau builds
+visual worksheets over these prepared extracts.
+
+Ran `python -m pytest -q tests/test_tableau.py` (1 passed), Ruff (passed) and
+`python -m mcu_ops.tableau` against the complete DuckDB snapshot. Exports contained
+1 executive row, 72 month-family rows, 12 SKUs, 2,496 tested lots and 482 open orders.
+The test reconciled monthly due and on-time counts, lot passed units and order backlog
+against the executive row. No Tableau workbook was authored or published here.
+
+Interview answer — I export the counts needed to recalculate rates after Tableau filters.
+I keep grains separate so a lot-to-order join cannot repeat measures. The next phase
+verifies a clean package install and documents local and hosted deployment.
+
+
+## Phase 9 — Deployment preparation
+
+[README](../README.md) explains the walkthrough, repository map and local commands.
+[Deployment guide](DEPLOYMENT.md) covers the PostgreSQL stack and the manual GitHub and
+Streamlit Community Cloud steps. `requirements.txt` installs the project wheel and SQL
+assets. The demo can generate and validate a snapshot in OS temporary storage. The two
+stochastic dependencies were pinned to the versions that produced the reference results.
+
+Created `.venv-clean` and installed with `python -m pip install -r requirements.txt`.
+`pip check` passed. AppTest imported from `site-packages`, read packaged SQL, and started
+the app with an unused data path. It displayed 71.4% OTD and 101,999 backlog units and left
+the configured data path untouched. Git ignored `.env`, virtual environments, generated
+data, database files and reports. Docker Desktop did not finish starting. A temporary
+native PostgreSQL 17.8 server did start and the small KPI parity test passed. The full
+external test attempt collided with a sandbox-owned pytest temp directory. Final verification
+will use its own `--basetemp`.
+
+Interview answer — I verify the installed wheel and its SQL files in a clean environment,
+then test first launch with no prebuilt database. The last phase adds verified business
+findings, a portfolio walkthrough and integration evidence.
+
+
+## Phase 10 — Integration, findings and interview preparation
+
+[Simulated findings](BUSINESS_INSIGHTS.md) reconcile delivery, demand, inventory, yield and
+backlog from SQL. [Interview demo](INTERVIEW_DEMO.md), [model answers](INTERVIEW_QA.md) and
+[portfolio copy](PORTFOLIO_DESCRIPTION.md) describe implemented behavior. The final review
+fixed blank production lot IDs, added a targeted test, used the lowest observed SKU stock
+for inventory alerts, and kept each dashboard, report or export read on one snapshot.
+
+Ran the complete `pytest -q` suite with `MCU_TEST_POSTGRES_URL` and an isolated
+`--basetemp` against PostgreSQL 17.8. All 17 tests passed. The full native PostgreSQL load,
+Tableau export and weekly report ran successfully. The verification bundle did not include
+the optional `psql` client. A follow-up run exited 0 after two PostgreSQL tests, a full load,
+and a SQLAlchemy query returning 15,954 orders. The server was stopped after verification.
+
+The DuckDB refresh and Tableau commands exited 0 against a separate verification database.
+All five full-snapshot CSVs matched across engines within floating-point tolerance. Report
+contents matched apart from the run metadata. The final quarantine run preserved 20 rejected
+rows and the stale inventory flag. Strict mode returned exit 1 as intended. The final wheel
+passed the fresh Streamlit startup check with no data directory and `pip check` succeeded.
+Ruff, compilation, workflow YAML parsing, local documentation links and the Git staging
+checks were verified. The first local Git checkpoint is `ddc7f0c`.
+
+Interview answer — I can demonstrate a due-order metric from raw events through validation,
+SQL, interactive drilldown and weekly reporting, and show how I checked backend parity.
+Local project work is complete. The remaining external steps are to run Compose with an
+available Docker engine and publish the reviewed repository, app or Tableau workbook when desired.

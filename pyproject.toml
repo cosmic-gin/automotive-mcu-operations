@@ -9,10 +9,10 @@ description = "Fictional automotive MCU operations analytics"
 readme = "README.md"
 requires-python = ">=3.12,<3.15"
 dependencies = [
-    "pandas>=2.2,<3", "numpy>=1.26,<3", "Faker>=30,<41",
+    "pandas>=2.2,<3", "numpy==2.5.4", "Faker==40.44.0",
     "SQLAlchemy>=2.0,<3", "psycopg[binary]>=3.2,<4",
     "duckdb>=1.2,<2", "duckdb-engine>=0.15,<1",
-    "python-dotenv>=1,<2", "streamlit>=1.45,<2", "plotly>=6,<7",
+    "python-dotenv>=1,<2", "streamlit>=1.52,<2", "plotly>=6,<7",
 ]
 
 [project.optional-dependencies]

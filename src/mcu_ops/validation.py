@@ -32,12 +32,12 @@ def require(condition: bool, rule: str, message: str) -> None:
         raise RuleViolation(rule, message)
 
 
-def parse_record(raw: dict[str, str]) -> dict:
+def parse_record(raw: dict[str, str], *, nullable_lot: bool = False) -> dict:
     """Convert CSV strings to application types and report the first type or null failure."""
     row = {}
     for name, raw_value in raw.items():
         value = raw_value.strip()
-        if name == "lot_id" and not value:
+        if nullable_lot and name == "lot_id" and not value:
             row[name] = None
             continue
         require(bool(value), "required", f"{name} is required")

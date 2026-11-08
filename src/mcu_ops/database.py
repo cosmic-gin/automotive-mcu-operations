@@ -3,19 +3,23 @@ import argparse
 import json
 import logging
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager, nullcontext
 from datetime import date
 from importlib.resources import files
 from pathlib import Path
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import URL, Engine
+from sqlalchemy.engine import URL, Connection, Engine
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.pool import NullPool
 
 from mcu_ops.config import Settings, settings
 from mcu_ops.etl import ValidatedSnapshot, ValidationFailed, run_etl
 from mcu_ops.validation import KEYS
 
 LOG = logging.getLogger(__name__)
+SNAPSHOT_LOCK = 51803429
 
 
 def make_engine(config: Settings, *, memory: bool = False) -> Engine:
@@ -25,7 +29,7 @@ def make_engine(config: Settings, *, memory: bool = False) -> Engine:
             return create_engine("duckdb:///:memory:")
         config.data_dir.mkdir(parents=True, exist_ok=True)
         database = str((config.data_dir / "operations.duckdb").resolve())
-        return create_engine(URL.create("duckdb", database=database))
+        return create_engine(URL.create("duckdb", database=database), poolclass=NullPool)
 
     override = os.getenv("MCU_POSTGRES_URL")
     if override:
@@ -54,7 +58,7 @@ def replace_snapshot(engine: Engine, snapshot: ValidatedSnapshot) -> dict[str, i
     row_counts = {}
     with engine.begin() as conn:
         if engine.dialect.name == "postgresql":
-            conn.execute(text("SELECT pg_advisory_xact_lock(51803429)"))
+            conn.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": SNAPSHOT_LOCK})
         for table in ("snapshot_metadata", *reversed(KEYS)):
             conn.execute(text(f"DROP TABLE IF EXISTS {table}"))
         for statement in schema.split(";"):
@@ -81,9 +85,18 @@ def replace_snapshot(engine: Engine, snapshot: ValidatedSnapshot) -> dict[str, i
     return row_counts
 
 
-def metadata(engine: Engine) -> dict:
+@contextmanager
+def snapshot_reader(engine: Engine) -> Iterator[Connection]:
+    """Keep related queries on one committed snapshot while the application reads it."""
+    with engine.begin() as connection:
+        if engine.dialect.name == "postgresql":
+            connection.execute(text("SELECT pg_advisory_xact_lock_shared(:key)"), {"key": SNAPSHOT_LOCK})
+        yield connection
+
+
+def metadata(bind: Engine | Connection) -> dict:
     """Return the quality record committed with the currently queryable tables."""
-    with engine.connect() as conn:
+    with bind.connect() if isinstance(bind, Engine) else nullcontext(bind) as conn:
         encoded = conn.scalar(text("SELECT quality_json FROM snapshot_metadata WHERE singleton = 1"))
     if encoded is None:
         raise RuntimeError("Database contains no loaded snapshot")

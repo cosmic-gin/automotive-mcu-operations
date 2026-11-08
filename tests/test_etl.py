@@ -56,3 +56,16 @@ def test_missing_column_quarantines_affected_rows(sources):
     ]
     assert result.tables["production_lots"].empty
     assert "lot_fk" in result.quality["rules"]
+
+
+def test_blank_lot_key_is_required_only_for_lots(sources):
+    frames, manifest = extract(sources / "clean")
+    lot = frames["production_lots"].iloc[0].lot_id
+    frames["production_lots"].loc[0, "lot_id"] = ""
+    shipments = frames["shipments"]
+    available = shipments.loc[shipments.lot_id != lot].index[0]
+    shipment_id = shipments.loc[available, "shipment_id"]
+    shipments.loc[available, "lot_id"] = ""
+    result = validate(frames, manifest)
+    assert result.quality["rules"]["required"] == 1
+    assert result.tables["shipments"].set_index("shipment_id").loc[shipment_id, "lot_id"] is None

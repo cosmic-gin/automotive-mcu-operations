@@ -44,7 +44,9 @@ def extract(root: Path) -> tuple[dict[str, pd.DataFrame], dict]:
 
 def _freshness(manifest: dict, as_of: date, max_age_days: int) -> list[dict]:
     results = []
-    dates = manifest.get("source_dates", {})
+    dates = manifest.get("source_dates")
+    if not isinstance(dates, dict):
+        dates = {}
     for table in KEYS:
         raw = dates.get(table)
         try:
@@ -81,7 +83,9 @@ def validate(frames: dict[str, pd.DataFrame], manifest: dict, max_age_days: int 
             try:
                 if missing:
                     raise RuleViolation("schema_columns", f"Missing columns: {', '.join(missing)}")
-                row = parse_record({column: original[column] for column in expected})
+                row = parse_record(
+                    {column: original[column] for column in expected}, nullable_lot=table == "shipments"
+                )
                 validator.accept(table, row)
             except RuleViolation as exc:
                 rejects.append({

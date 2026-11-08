@@ -14,7 +14,7 @@ Percentages use zero to 100. An undefined denominator produces a null, displayed
 | Production test yield | Lots produced in period. 100 times total passed units divided by total tested units. Zero-tested lots contribute zero to both. |
 | Defect rate | Lots produced in period. 100 times total rejected units divided by total tested units. Passed plus rejected equals tested. |
 | Average fulfillment lead time | Orders completed in period. Average elapsed calendar days from order date to final quantity completing shipment. |
-| Inventory availability | On-hand units from each SKU's latest observation as of cutoff, summed over observed SKUs. Trend points sum available units for snapshots on the same date. Missing observations are unavailable. |
+| Inventory availability | On-hand units from each SKU's latest observation as of cutoff, summed over observed SKUs. Trend points sum available units for snapshots on the same date. Missing observations are unavailable. The stock alert compares the lowest observed SKU balance with the fictional floor. |
 | Monthly demand growth | Percentage change in ordered units from the preceding calendar month using order dates. First observed month, empty prior month and incomplete comparison months yield null. |
 | Data quality failure rate | Rejected source rows divided by all rows processed in the selected pipeline run, times 100. Freshness and schema failures also have separate flags. |
 

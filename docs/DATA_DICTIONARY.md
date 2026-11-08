@@ -1,6 +1,6 @@
 # Data dictionary
 
-Identifiers and labels are text. Dates are ISO YYYY-MM-DD with business-day granularity, including
+Identifiers and labels are text. Dates are ISO YYYY-MM-DD with calendar-day granularity, including
 weekends in the simulation. Quantities count whole units. All fields are required except shipment lot ID.
 
 | Table and grain | Fields and constraints | Proposed lookup indexes |
