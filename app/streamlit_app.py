@@ -24,29 +24,41 @@ try:
         options = analytics.products()
 
         with st.sidebar:
+            is_reliability = page.title == "Data reliability"
             st.header("Reporting filters")
             window = st.date_input(
                 "Reporting dates", (analytics.start, analytics.as_of),
                 min_value=analytics.start, max_value=analytics.as_of, key="period",
+                disabled=is_reliability,
             )
             category = st.selectbox("Product category", ["", *options.product_category.unique()],
-                                    format_func=lambda item: item or "All categories", key="category")
+                                    format_func=lambda item: item or "All categories", key="category",
+                                    disabled=is_reliability)
             families = options if not category else options.loc[options.product_category == category]
             family = st.selectbox("Product family", ["", *families.product_family.unique()],
-                                  format_func=lambda item: item or "All families", key="family")
+                                  format_func=lambda item: item or "All families", key="family",
+                                  disabled=is_reliability)
             segment = st.selectbox("Customer segment", ["", "OEM", "Tier 1", "Distributor"],
-                                   format_func=lambda item: item or "All segments", key="segment")
-            st.caption("Segment filters orders and dispatches. Yield, stock and reliability use their own grains.")
+                                   format_func=lambda item: item or "All segments", key="segment",
+                                   disabled=is_reliability)
+            if is_reliability:
+                st.caption("Reliability covers the whole loaded snapshot.")
+            else:
+                st.caption("Customer segment filters orders and dispatches. Stock and yield cover all segments.")
             st.divider()
             st.caption(f"Backend · {config.backend}")
-            st.caption(f"Snapshot cutoff · {analytics.as_of.isoformat()}")
-            st.caption(f"Refreshed (UTC) · {analytics.quality['validated_at'][:16].replace('T', ' ')}")
+            mode = analytics.quality.get("simulation_mode", "reference")
+            st.caption(f"Simulated cutoff · {analytics.as_of.isoformat()} · {mode.capitalize()} replay")
+            st.caption(f"Last validated (UTC) · {analytics.quality['validated_at'][:16].replace('T', ' ')}")
 
         st.caption("FICTIONAL OPERATIONS DATA · AUTOMOTIVE MICROCONTROLLERS")
-        if len(window) != 2:
+        if len(window) != 2 and not is_reliability:
             st.info("Choose an end date to apply the reporting period.")
             st.stop()
-        st.session_state["_report_context"] = (analytics, Filters(*window, category, family, segment), config, runtime)
+        filters = Filters(analytics.start, analytics.as_of) if is_reliability else Filters(
+            *window, category, family, segment
+        )
+        st.session_state["_report_context"] = (analytics, filters, config, runtime)
         page.run()
 except (OSError, ValueError, RuntimeError, SQLAlchemyError):
     st.error("The snapshot could not be opened or queried. Check the server logs and database setup.")

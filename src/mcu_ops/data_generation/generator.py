@@ -3,7 +3,7 @@ import argparse
 import json
 from collections import deque
 from dataclasses import asdict, dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -26,6 +26,10 @@ COLUMNS = {
     "shipments": "shipment_id order_id lot_id shipment_date shipped_quantity",
 }
 DAY = timedelta(days=1)
+DEFAULT_DAILY_ORDERS = 95
+DAY_DEMAND = (1.10, 1.18, 1.16, 1.14, 1.00, 0.52, 0.36)
+# Channel, carton range and minimum promise days. Each carton holds 20 MCUs.
+ORDER_MIX = (("OEM", 7, 23, 8), ("Tier 1", 5, 18, 7), ("Distributor", 2, 12, 6))
 
 
 @dataclass(frozen=True)
@@ -33,14 +37,31 @@ class Simulation:
     seed: int = 42
     start: date = date(2025, 1, 1)
     months: int = 9
-    daily_orders: int = 45
+    daily_orders: int = DEFAULT_DAILY_ORDERS
+    cutoff: date | None = None
 
     def __post_init__(self):
         if self.start.day != 1 or self.months < 6 or self.daily_orders < 4:
             raise ValueError("Start on the first of a month, use at least six months and four daily orders")
+        if self.cutoff is not None and not self.start <= self.cutoff <= self.planned_end:
+            raise ValueError("Cutoff must be inside the planned simulation")
+
+    @classmethod
+    def rolling(
+        cls, cutoff: date | None = None, *, seed: int = 42, months: int = 9,
+        daily_orders: int = DEFAULT_DAILY_ORDERS,
+    ) -> "Simulation":
+        """Replay a moving calendar window through the last complete UTC day by default."""
+        cutoff = cutoff or (datetime.now(UTC).date() - DAY)
+        start = (pd.Timestamp(cutoff.replace(day=1)) - pd.DateOffset(months=months - 1)).date()
+        return cls(seed, start, months, daily_orders, cutoff)
 
     @property
     def end(self) -> date:
+        return self.cutoff or self.planned_end
+
+    @property
+    def planned_end(self) -> date:
         return (pd.Timestamp(self.start) + pd.DateOffset(months=self.months)).date() - DAY
 
 
@@ -87,47 +108,62 @@ def generate(spec: Simulation | None = None) -> dict[str, pd.DataFrame]:
     products = [row[0] for row in tables["products"]]
     pending = {product: deque() for product in products}
     stock = {product: deque() for product in products}
+    on_hand = dict.fromkeys(products, 0)
     current = spec.start
+    nominal = spec.daily_orders * 235 / len(products)
+    weekly_pressure = 0.0
 
     while current <= end:
         month = (current.year - spec.start.year) * 12 + current.month - spec.start.month
         progress = month / (spec.months - 1)
         stressed = 0.35 <= progress < 0.75
         recovering = progress >= 0.75
-        seasonal = 1 + 0.09 * np.sin(month * np.pi / 3)
-        weekend = 0.70 if current.weekday() >= 5 else 1.10
-        arrivals = rng.poisson(spec.daily_orders * (1 + 0.58 * progress) * seasonal * weekend)
-        weights = [1.45 if stressed and i < 3 else 1.0 for i in range(len(products))]
-        for index in rng.choice(len(products), size=arrivals, p=np.array(weights) / sum(weights)):
+        weekday = current.weekday()
+        if current == spec.start or weekday == 0:
+            weekly_pressure = float(np.clip(0.55 * weekly_pressure + rng.normal(0, 0.12), -0.3, 0.3))
+        seasonal = 1 + 0.07 * np.sin((current.month - 1) * np.pi / 3)
+        quarter_pull = 1.16 if current.month % 3 == 0 and current.day >= 23 else 1.0
+        arrivals = rng.poisson(
+            spec.daily_orders * (1 + 0.42 * progress) * seasonal * DAY_DEMAND[weekday]
+            * quarter_pull * (1 + weekly_pressure)
+        )
+        weights = np.tile([1.13, 1.0, 0.87], 4)
+        if stressed:
+            weights[:3] *= 1.28
+        product_indices = rng.choice(len(products), size=arrivals, p=weights / weights.sum())
+        channels = rng.choice(len(ORDER_MIX), size=arrivals, p=(0.28, 0.53, 0.19))
+        for index, channel in zip(product_indices, channels, strict=True):
             product = products[index]
-            units = int(rng.integers(35, 391))
-            promise = current + int(rng.integers(6, 13)) * DAY
-            release = current + int(rng.integers(2, 6)) * DAY
+            segment, low, high, standard_lead = ORDER_MIX[channel]
+            units = int(rng.integers(low, high + 1)) * 20
+            promise = current + (standard_lead + int(rng.integers(0, 5))) * DAY
+            release = current + int(rng.integers(1, 5)) * DAY
             order_id = f"ORD-{len(orders) + 1:07}"
             pending[product].append(OpenOrder(len(orders), units, release))
-            orders.append([order_id, product, str(rng.choice(SEGMENTS)), current, promise, units, "OPEN"])
+            orders.append([order_id, product, segment, current, promise, units, "OPEN"])
 
         for index, product in enumerate(products):
             # An assumed supplier interruption constrains safety and powertrain lot starts.
             supplier_delay = stressed and index in {0, 1, 2, 6, 7, 8}
-            if current.weekday() < 5 or (recovering and current.weekday() == 5):
-                nominal = spec.daily_orders * 210 / len(products) * 1.55
-                capacity = 0.66 if supplier_delay else (1.68 if recovering else 1.08)
-                tested = max(1, int(nominal * capacity * rng.uniform(0.74, 1.25)))
-                target = 0.933 if supplier_delay else (0.985 if recovering else 0.977)
+            outage = rng.random() < (0.13 if supplier_delay else 0.025)
+            if not outage and (weekday < 5 or (recovering and weekday == 5)):
+                capacity = 1.12 if supplier_delay else (2.05 if recovering else 1.78)
+                tested = max(1, int(nominal * capacity * rng.uniform(0.80, 1.20)))
+                target = 0.945 if supplier_delay else (0.985 if recovering else 0.977)
+                target = float(np.clip(target + rng.normal(0, 0.009), 0.87, 0.998))
                 passed = int(rng.binomial(tested, target))
                 lot_id = f"LOT-{len(lots) + 1:07}"
                 lots.append((lot_id, product, current, tested, passed, tested - passed))
                 if passed:
                     stock[product].append(StockLot(lot_id, passed))
+                    on_hand[product] += passed
 
             queue = pending[product]
             inventory = stock[product]
-            available = sum(lot.remaining for lot in inventory)
-            budget = available
-            # Simulated dispatch capacity drops during the same period as supplier delays.
-            if supplier_delay:
-                budget = min(available, int(spec.daily_orders * 210 / len(products) * 0.88))
+            available = on_hand[product]
+            dispatch_capacity = 0.85 if supplier_delay else (2.40 if recovering else 1.85)
+            shift = (1.0, 1.05, 1.0, 1.03, 0.94, 0.55, 0.12)[weekday]
+            budget = min(available, int(nominal * dispatch_capacity * shift * rng.uniform(0.88, 1.12)))
             while queue and budget and queue[0].ready_date <= current:
                 order = queue[0]
                 lot = inventory[0]
@@ -144,8 +180,8 @@ def generate(spec: Simulation | None = None) -> dict[str, pd.DataFrame]:
                 if order.remaining == 0:
                     orders[order.index][-1] = "FULFILLED"
                     queue.popleft()
-            if current.weekday() == 6 or current == end:
-                snapshots.append((f"INV-{len(snapshots) + 1:07}", product, current, available))
+            on_hand[product] = available
+            snapshots.append((f"INV-{len(snapshots) + 1:07}", product, current, available))
         current += DAY
 
     return {
@@ -195,6 +231,8 @@ def write_sources(root: Path, spec: Simulation, corrupt: bool = False) -> dict[s
     manifest = {
         **asdict(spec),
         "start": spec.start.isoformat(),
+        "cutoff": spec.end.isoformat(),
+        "simulation_mode": "rolling" if spec.cutoff else "reference",
         "as_of": spec.end.isoformat(),
         "source_dates": freshness,
         "scenario": "faults" if corrupt else "clean",
@@ -208,14 +246,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("data/raw/clean"))
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--start", type=date.fromisoformat, default=date(2025, 1, 1))
+    horizon = parser.add_mutually_exclusive_group()
+    horizon.add_argument("--start", type=date.fromisoformat)
+    horizon.add_argument("--live", action="store_true", help="Roll through the last complete UTC day")
     parser.add_argument("--months", type=int, default=9)
-    parser.add_argument("--daily-orders", type=int, default=45)
+    parser.add_argument("--daily-orders", type=int, default=DEFAULT_DAILY_ORDERS)
     parser.add_argument("--corrupt", action="store_true")
     args = parser.parse_args()
     if args.corrupt and args.output.name != "faults":
         parser.error("Use a separate directory named faults for corrupted data")
-    print(write_sources(args.output, Simulation(args.seed, args.start, args.months, args.daily_orders), args.corrupt))
+    if args.live:
+        spec = Simulation.rolling(seed=args.seed, months=args.months, daily_orders=args.daily_orders)
+    else:
+        spec = Simulation(args.seed, args.start or Simulation().start, args.months, args.daily_orders)
+    print(write_sources(args.output, spec, args.corrupt))
 
 
 if __name__ == "__main__":

@@ -220,3 +220,37 @@ Interview answer — I can demonstrate a due-order metric from raw events throug
 SQL, interactive drilldown and weekly reporting, and show how I checked backend parity.
 Local project work is complete. The remaining external steps are to run Compose with an
 available Docker engine and publish the reviewed repository, app or Tableau workbook when desired.
+
+
+## Release follow-up — Larger replay, dashboard clarity and Docker verification
+
+Expanded the seed-42 reference replay from 37,112 to 67,366 rows. The revised generator
+models customer-segment carton sizes and promise windows, weekday and quarter-end demand,
+weekly demand pressure, lot outages, shift capacity and daily stock. The rolling replay
+uses the last complete UTC day. Tests reconcile every daily SKU balance and verify that
+advancing the cutoff within the same month preserves earlier source events. The hosted
+report workflow now invokes `python -m mcu_ops.reporting --live`.
+
+Used native Streamlit column alignment for all Data reliability tables. The page separates
+row validation from source freshness, disables unrelated business filters, and keeps the
+duplicate result visible during reruns. Browser verification confirmed centered text and
+numeric cells and the `duplicate_key` result. Refreshed both screenshots. The first test
+assertion included Streamlit's hidden index config. Restricting it to visible columns
+verified the intended alignment.
+
+Verified Docker Desktop and ran `docker compose up -d --wait` with an isolated PostgreSQL 17
+service. All 18 tests passed with PostgreSQL enabled. The full reference run loaded
+29,454 orders, 32,252 shipments and 3,276 stock observations as confirmed by `psql`.
+DuckDB loads data frames in bulk inside the existing transaction. Five Tableau CSVs and the
+weekly report content matched between the engines. The rolling local report ended
+2026-11-06. The fault run preserved 31 rejected rows and strict mode exited 1 as expected.
+
+The installed wheel booted Streamlit without a prebuilt database. Ruff, pip dependency
+checks, compilation, relative Markdown links and the scheduled workflow YAML checks passed.
+Verified the GitHub CLI sign-in. [Publication guide](GITHUB_PUSH.md) documents the first
+push, hosted test verification and artifact download. The GitHub and Tableau publication
+steps remain external to this local release.
+
+Interview answer — I can explain how a deterministic replay adds calendar-driven events,
+why stock and dispatch capacity are separate, and how I verified the same outputs across
+DuckDB and a real PostgreSQL container.

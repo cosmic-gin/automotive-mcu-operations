@@ -107,6 +107,7 @@ def validate(frames: dict[str, pd.DataFrame], manifest: dict, max_age_days: int 
     quality = {
         "run_id": uuid4().hex, "validated_at": timestamp, "start": start.isoformat(),
         "as_of": as_of.isoformat(), "scenario": manifest.get("scenario", "unknown"),
+        "simulation_mode": manifest.get("simulation_mode", "reference"),
         "processed": processed, "accepted": processed - len(rejects), "rejected": len(rejects),
         "rejection_pct": 100 * len(rejects) / processed if processed else None,
         "tables": counts, "rules": dict(Counter(row["failed_rule"] for row in rejects)),

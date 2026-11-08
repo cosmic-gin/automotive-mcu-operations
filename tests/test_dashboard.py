@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
@@ -44,3 +45,9 @@ def test_four_pages_filter_metrics_and_detect_duplicate(tmp_path, monkeypatch):
     app.button(key="duplicate_demo").click().run()
     assert not app.exception
     assert "duplicate_key" in app.warning[0].value
+    assert app.date_input(key="period").proto.disabled
+    for table in app.dataframe:
+        columns = json.loads(table.proto.columns)
+        assert columns
+        visible = [config for config in columns.values() if not config.get("hidden")]
+        assert visible and all(config.get("alignment") == "center" for config in visible), columns

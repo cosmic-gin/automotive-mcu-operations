@@ -26,5 +26,7 @@ lock on PostgreSQL, so a reload cannot interleave with their queries. A DuckDB f
 DuckDB dashboard before running a separate writer. The snapshot metadata and quality evidence
 are committed with the operational tables. ETL audit files remain available for failed runs.
 
-This is a full-refresh design for a small synthetic dataset. Existing views, grants tied to
+DuckDB loads registered data frames in bulk within the same transaction. PostgreSQL uses
+parameterized inserts in batches. This is a full-refresh design for the synthetic dataset.
+Existing views, grants tied to
 replaced tables, and incremental history are outside this dedicated database model.

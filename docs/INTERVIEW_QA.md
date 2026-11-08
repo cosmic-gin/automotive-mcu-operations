@@ -37,8 +37,8 @@
     carrier delivery events for a true delivery measure.
 18. **What are the limitations of synthetic data?** It tests workflow and metric semantics
     under constructed scenarios. It cannot establish real effect sizes or business impact.
-19. **What did you find?** Simulated OTD fell from 100% in March to 45.99% in June.
-    Backlog peaked at 307,394 units in June and fell to 101,999 by September.
+19. **What did you find?** Simulated OTD fell from 99.97% in March to 46.83% in May.
+    Backlog peaked at 774,015 units in June and fell to 269,913 by September.
 20. **How could operations use the dashboard?** Start with the OTD alert, filter the affected
     category, rank overdue SKU balances and inspect the orders to decide what to investigate.
 21. **How do you compare quality with delivery?** I link accepted shipments to tested lots and

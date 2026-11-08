@@ -12,7 +12,7 @@ dependencies = [
     "pandas>=2.2,<3", "numpy==2.5.4", "Faker==40.44.0",
     "SQLAlchemy>=2.0,<3", "psycopg[binary]>=3.2,<4",
     "duckdb>=1.2,<2", "duckdb-engine>=0.15,<1",
-    "python-dotenv>=1,<2", "streamlit>=1.52,<2", "plotly>=6,<7",
+    "python-dotenv>=1,<2", "streamlit>=1.66,<2", "plotly>=6,<7",
 ]
 
 [project.optional-dependencies]

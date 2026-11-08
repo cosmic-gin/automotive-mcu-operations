@@ -14,7 +14,7 @@ Streamlit, weekly KPI reports and Tableau extracts.
 
 ## Résumé bullets
 
-- Designed a seeded simulation of 37,112 fictional operational records across orders,
+- Designed a seeded simulation of 67,366 fictional operational records across orders,
   shipments, product SKUs, tested lots and stock snapshots.
 - Built a Python ETL pipeline with typed validation, cumulative shipment checks, dependency
   handling, and inspectable quarantine records.
@@ -48,6 +48,6 @@ reports over a temporary DuckDB database.
 > I generated realistic orders, lots and shipments, built a Python pipeline that quarantines
 > invalid rows, and stored accepted records in PostgreSQL and DuckDB. SQL calculates
 > on-time delivery, weighted yield and backlog at a selected cutoff. In the simulation, on-time
-> delivery fell to 46% in June and partially recovered by September. In Streamlit I can
+> delivery fell to 47% in May and partially recovered by September. In Streamlit I can
 > trace that signal to Safety-Control orders, inspect remaining units and demonstrate a
 > detected duplicate. The same KPI layer generates a weekly report and Tableau extracts.

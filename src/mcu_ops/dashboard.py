@@ -63,7 +63,7 @@ def format_value(value, kind="count") -> str:
 
 
 def chart(frame, *, x, y, labels, kind="line", color=None):
-    if frame.empty:
+    if frame.empty or frame[y].isna().to_numpy().all():
         st.info("No observations for the selected filters.")
         return
     if kind == "bar":
@@ -76,9 +76,25 @@ def chart(frame, *, x, y, labels, kind="line", color=None):
     st.plotly_chart(figure, width="stretch")
 
 
-def table_with_download(frame: pd.DataFrame, filename: str):
-    st.dataframe(frame, hide_index=True, width="stretch")
-    st.download_button("Download CSV", frame.to_csv(index=False), file_name=filename, mime="text/csv",
+def centered_table(frame: pd.DataFrame) -> None:
+    columns = {
+        name: st.column_config.Column(
+            " ".join(part.upper() if part in {"utc", "id", "sku"} else part.capitalize()
+                     for part in name.split("_")),
+            alignment="center",
+        )
+        for name in frame.columns
+    }
+    st.dataframe(frame, hide_index=True, width="stretch", column_config=columns)
+
+
+def table_with_download(frame: pd.DataFrame, filename: str, *, centered: bool = False):
+    if centered:
+        centered_table(frame)
+    else:
+        st.dataframe(frame, hide_index=True, width="stretch")
+    st.download_button(f"Download {filename.removesuffix('.csv').replace('_', ' ')} (CSV)",
+                       frame.to_csv(index=False), file_name=filename, mime="text/csv",
                        key=filename)
 
 

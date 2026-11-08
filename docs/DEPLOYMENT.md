@@ -44,6 +44,8 @@ and retains its data volume.
 
 ## GitHub and Streamlit Community Cloud
 
+Follow the [GitHub push guide](GITHUB_PUSH.md) for the full PowerShell sequence.
+
 1. Review `git status --short` and `git ls-files`. Source, documentation and screenshots
    belong in Git. Raw or exported data, reports, local databases and `.env` are ignored.
 2. Create a GitHub repository using your account when ready to share. Add the remote with

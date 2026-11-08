@@ -17,11 +17,11 @@ Point at the source-to-dashboard flow in the [architecture](ARCHITECTURE.md).
 
 ## Minute 2 · SQL-backed investigation
 
-1. Show March, June and September on the executive delivery chart. The simulated rates were
-   100%, 46.0% and 78.0%. Point out the June gap between ordered and shipped units.
+1. Show March, May and September on the executive delivery chart. The simulated rates were
+   99.97%, 46.83% and 76.16%. Point out the June gap between ordered and shipped units.
 2. Select **Safety-Control MCUs**, set the end date to **2025-06-30**, and open **Orders and
    delivery**. Choose **Overdue at cutoff**. Show the promised date, shipped units and remaining
-   units for a delayed order. The June cutoff had 768 overdue Safety-Control orders.
+   units for a delayed order. The June cutoff had 1,338 overdue Safety-Control orders.
 3. Explain the calculation in one example. If 80 of 100 units ship by the promise date,
    the order is one missed promise and contributes 20 outstanding units at that cutoff.
    The SQL aggregates shipments by order first, then left joins the one-row result to all
@@ -30,9 +30,9 @@ Point at the source-to-dashboard flow in the [architecture](ARCHITECTURE.md).
 ## Minute 3 · Reliability and automation
 
 1. Open **Data reliability** and click **Detect a duplicate order**. Point at the quarantined ID
-   and the `duplicate_key` rule. Show that the loaded snapshot still reports its own 37,112 rows.
+   and the `duplicate_key` rule. Show that the loaded reference snapshot still reports its own 67,366 rows.
 2. Open the generated weekly report. Explain how strict ETL prevents an invalid snapshot
    from reaching the database. A scheduled GitHub Actions job reruns the command and stores
    the Markdown report, quality evidence and execution status as artifacts.
-3. Close with one finding. Safety-Control still had 47,932 open units at the end of September.
-   Recommend reviewing lot availability and promise dates for its three SKUs.
+3. Close with one finding. Safety-Control still had 126,345 open units at the end of September.
+   Recommend reviewing lot availability and promise dates, starting with MCU-001.

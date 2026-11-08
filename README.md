@@ -30,9 +30,21 @@ in temporary storage. Open the localhost URL printed by Streamlit.
 3. On **Production quality**, compare weighted family yield and outcomes by traced lot group.
 4. In **Data reliability**, click **Detect a duplicate order** and inspect the quarantined row.
 
-The default simulation includes nine months and 37,112 records. On-time delivery fell from
-100% in March to 45.99% in June and recovered to 78.04% in September. See the
+The reference simulation includes nine months and 67,366 records. On-time delivery fell from
+99.97% in March to 46.83% in May and recovered to 76.16% in September. See the
 [simulated findings](docs/BUSINESS_INSIGHTS.md) and [three-minute demo](docs/INTERVIEW_DEMO.md).
+
+## Replay through the last complete day
+
+This writes a separate rolling DuckDB snapshot and weekly report through yesterday UTC.
+Streamlit shows the simulation cutoff and the actual validation time separately.
+
+```powershell
+$env:MCU_BACKEND = 'duckdb'
+$env:MCU_DATA_DIR = 'data/rolling'
+python -m mcu_ops.reporting --live
+python -m streamlit run app/streamlit_app.py
+```
 
 ## Run each layer
 
@@ -56,6 +68,7 @@ The standalone database and report commands default to DuckDB. See the
 Community Cloud. To enable PostgreSQL tests locally, point `MCU_TEST_POSTGRES_URL` at a
 disposable PostgreSQL database with permission to create test schemas. Unconfigured PostgreSQL
 checks skip. GitHub CI provisions a temporary PostgreSQL service for them.
+The [GitHub push guide](docs/GITHUB_PUSH.md) covers review, repository creation, push and hosted checks.
 
 ## Architecture and project map
 
@@ -83,6 +96,6 @@ for the status of local and hosted checks.
 ## Scope
 
 Shipment dates serve as a proxy for delivery. The simulation models one SKU per order, omits
-returns and cancellations, and uses a fixed fictional reporting timeline. Quality comparisons
+returns and cancellations, and offers fixed reference and rolling fictional replays. Quality comparisons
 describe observed associations. A production extension could add carrier delivery events,
 late-arriving data handling, incremental loads and data-contract monitoring.

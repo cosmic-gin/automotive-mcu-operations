@@ -67,11 +67,19 @@ def replace_snapshot(engine: Engine, snapshot: ValidatedSnapshot) -> dict[str, i
         for name in KEYS:
             frame = snapshot.tables[name]
             columns = list(frame.columns)
-            placeholders = ", ".join(f":{column}" for column in columns)
-            # Identifiers are defined by the checked-in schema, values are bound.
-            statement = text(f"INSERT INTO {name} ({', '.join(columns)}) VALUES ({placeholders})")
-            for offset in range(0, len(frame), 2_000):
-                conn.execute(statement, frame.iloc[offset:offset + 2_000].to_dict("records"))
+            fields = ", ".join(columns)
+            if not frame.empty and engine.dialect.name == "duckdb":
+                driver = conn.connection.driver_connection
+                driver.register("_mcu_load_batch", frame)
+                try:
+                    conn.execute(text(f"INSERT INTO {name} ({fields}) SELECT {fields} FROM _mcu_load_batch"))
+                finally:
+                    driver.unregister("_mcu_load_batch")
+            else:
+                placeholders = ", ".join(f":{column}" for column in columns)
+                statement = text(f"INSERT INTO {name} ({fields}) VALUES ({placeholders})")
+                for offset in range(0, len(frame), 2_000):
+                    conn.execute(statement, frame.iloc[offset:offset + 2_000].to_dict("records"))
             row_counts[name] = conn.scalar(text(f"SELECT COUNT(*) FROM {name}"))
         quality = snapshot.quality
         conn.execute(

@@ -137,6 +137,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     raw = parser.add_mutually_exclusive_group()
     raw.add_argument("--refresh", action="store_true", help="Regenerate the standard fictional snapshot")
+    raw.add_argument("--live", action="store_true", help="Regenerate through the last complete UTC day")
     raw.add_argument("--source", type=Path, help="Use an existing source folder with its manifest")
     parser.add_argument("--report-dir", type=Path, default=Path("reports"))
     parser.add_argument("--end", type=date.fromisoformat, help="End date on the fictional timeline")
@@ -145,8 +146,8 @@ def main() -> int:
     try:
         config = settings()
         source = args.source or config.data_dir / "raw" / "clean"
-        report = run_cycle(config, source, args.report_dir,
-                           refresh=Simulation() if args.refresh else None, end=args.end)
+        refresh = Simulation.rolling() if args.live else Simulation() if args.refresh else None
+        report = run_cycle(config, source, args.report_dir, refresh=refresh, end=args.end)
         print(report)
     except (OSError, ValueError, RuntimeError, SQLAlchemyError) as exc:
         LOG.error("Reporting failed: %s", exc)
