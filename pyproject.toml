@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "automotive-mcu-intelligence"
+version = "0.1.0"
+description = "Fictional automotive MCU operations analytics"
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "pandas>=2.2,<3", "numpy>=1.26,<3", "Faker>=30,<41",
+    "SQLAlchemy>=2.0,<3", "psycopg[binary]>=3.2,<4",
+    "duckdb>=1.2,<2", "duckdb-engine>=0.15,<1",
+    "python-dotenv>=1,<2", "streamlit>=1.45,<2", "plotly>=6,<7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.11,<1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+mcu_ops = ["sql/schema/*.sql", "sql/kpis/*.sql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["postgres: requires a dedicated PostgreSQL test database"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B"]
